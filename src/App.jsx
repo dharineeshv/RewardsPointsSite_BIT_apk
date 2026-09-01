@@ -636,15 +636,66 @@ function DashboardHeroSlider({
 function LoginPage({ onLogin, isDarkMode, initialNotice = '' }) {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [authError, setAuthError] = useState(initialNotice);
+  const [directRollInput, setDirectRollInput] = useState('');
+  const [directLoading, setDirectLoading] = useState(false);
+
+  const processStudentLogin = async (email, googleName = '') => {
+    // Robust student roll & profile resolution
+    const { rollId, profileApiData, searchApiData } = await resolveStudentRollAndProfile(email, googleName);
+
+    const name = (profileApiData?.name || searchApiData?.student_name || googleName || rollId).trim().toUpperCase();
+    const initials = name.split(/\s+/).map(n => n[0]).filter(Boolean).join('').slice(0, 2) || rollId.slice(0, 2) || 'ST';
+    const balanceRaw = searchApiData?.balance_points ? searchApiData.balance_points.replace(/,/g, '') : '0.00';
+    const balancePts = parseFloat(balanceRaw || '0').toLocaleString();
+    const cumulativeRaw = searchApiData?.cumulative_reward_points ? searchApiData.cumulative_reward_points.replace(/,/g, '') : balanceRaw;
+    const cumulativePts = parseFloat(cumulativeRaw || '0').toLocaleString();
+    const redeemedRaw = searchApiData?.redeemed_points ? searchApiData.redeemed_points.replace(/,/g, '') : '0.00';
+    const redeemedPts = parseFloat(redeemedRaw || '0').toLocaleString();
+    const numBal = parseFloat(balanceRaw) || 0;
+    const numCum = parseFloat(cumulativeRaw) || numBal;
+    const numRed = parseFloat(redeemedRaw) || 0;
+    const photoUrl = profileApiData?.photo_url || null;
+
+    onLogin({
+      id: rollId,
+      name: name,
+      initials: initials,
+      department: profileApiData?.department || searchApiData?.department || "Computer Technology",
+      course_code: searchApiData?.course_code || "B. Tech.",
+      batch: profileApiData?.batch || "2023 - 2027",
+      year: searchApiData?.year ? (searchApiData.year.startsWith('Year') ? searchApiData.year : `Year ${searchApiData.year}`) : "Year IV",
+      phone: profileApiData?.phone || "9715020320",
+      mentor_name: searchApiData?.mentor_name || "Dr. ANANDAKUMAR K ISE",
+      picture: photoUrl,
+      photo_url: photoUrl,
+      avatarBg: "from-[#38c4ee] to-[#0ea5e9]",
+      badge: "Verified BIT Student",
+      email: email,
+      currentPoints: balancePts,
+      cumulativePoints: cumulativePts,
+      redeemedPoints: redeemedPts,
+      history: [
+        { id: 1, title: "Cumulative RP Earned", date: "Academic Year 2024-2025", points: `+${cumulativePts} RP`, category: "Activities", icon: Trophy, color: "text-amber-500 bg-amber-50" },
+        { id: 2, title: "Redeemed Points", date: "Benefits & Vouchers", points: `-${redeemedPts} RP`, category: "Redemption", icon: Gift, color: "text-indigo-500 bg-indigo-50" },
+        { id: 3, title: "Net Active Balance", date: "Current Academic Standing", points: `${balancePts} RP`, category: "Balance", icon: Award, color: "text-emerald-500 bg-emerald-50" },
+      ],
+      breakdown: [
+        { label: "Active Net Balance", pts: numBal, percent: Math.min(100, Math.round((numBal / (numCum || 1)) * 100)) || 100, color: "bg-[#4f46e5]" },
+        { label: "Cumulative Points", pts: numCum, percent: 100, color: "bg-[#22d3ee]" },
+        { label: "Redeemed Points", pts: numRed, percent: Math.min(100, Math.round((numRed / (numCum || 1)) * 100)), color: "bg-amber-500" },
+      ]
+    });
+  };
 
   const triggerGoogleLogin = useGoogleLogin({
+    flow: 'implicit',
     onSuccess: async (tokenResponse) => {
       setGoogleLoading(true);
       setAuthError('');
       try {
         const accessToken = tokenResponse?.access_token;
         if (!accessToken) {
-          throw new Error('Google did not provide a valid access token. Please try again.');
+          throw new Error('Google did not provide a valid access token.');
         }
 
         localStorage.setItem('bit_rp_access_token', accessToken);
@@ -657,76 +708,28 @@ function LoginPage({ onLogin, isDarkMode, initialNotice = '' }) {
           });
           if (res.ok) {
             googleProfile = await res.json();
-          } else {
-            console.warn('Google userinfo HTTP status:', res.status);
           }
         } catch (fetchErr) {
           console.warn('Failed to reach Google userinfo endpoint:', fetchErr);
         }
 
         if (!googleProfile || !googleProfile.email) {
-          throw new Error('Could not retrieve email from Google. Please check your network connection and try again.');
+          throw new Error('Could not retrieve email from Google. Please try again.');
         }
         
         const email = (googleProfile.email || '').toLowerCase().trim();
         const googleName = (googleProfile.name || 'BIT Student').toUpperCase();
         
-        // Strict Domain Check: Only @bitsathy.ac.in is authorized
         if (!email.endsWith('@bitsathy.ac.in')) {
           setAuthError(`Access Restricted: "${email}" is not an authorized domain. Please sign in using your official @bitsathy.ac.in account.`);
           setGoogleLoading(false);
           return;
         }
 
-        // Robust student roll & profile resolution
-        const { rollId, profileApiData, searchApiData } = await resolveStudentRollAndProfile(email, googleName);
-
-        const name = (profileApiData?.name || searchApiData?.student_name || googleName).trim().toUpperCase();
-        const initials = name.split(/\s+/).map(n => n[0]).filter(Boolean).join('').slice(0, 2) || rollId.slice(0, 2) || 'ST';
-        const balanceRaw = searchApiData?.balance_points ? searchApiData.balance_points.replace(/,/g, '') : '0.00';
-        const balancePts = parseFloat(balanceRaw || '0').toLocaleString();
-        const cumulativeRaw = searchApiData?.cumulative_reward_points ? searchApiData.cumulative_reward_points.replace(/,/g, '') : balanceRaw;
-        const cumulativePts = parseFloat(cumulativeRaw || '0').toLocaleString();
-        const redeemedRaw = searchApiData?.redeemed_points ? searchApiData.redeemed_points.replace(/,/g, '') : '0.00';
-        const redeemedPts = parseFloat(redeemedRaw || '0').toLocaleString();
-        const numBal = parseFloat(balanceRaw) || 0;
-        const numCum = parseFloat(cumulativeRaw) || numBal;
-        const numRed = parseFloat(redeemedRaw) || 0;
-        const photoUrl = profileApiData?.photo_url || googleProfile.picture || null;
-
-        onLogin({
-          id: rollId,
-          name: name,
-          initials: initials,
-          department: profileApiData?.department || searchApiData?.department || "Computer Technology",
-          course_code: searchApiData?.course_code || "B. Tech.",
-          batch: profileApiData?.batch || "2023 - 2027",
-          year: searchApiData?.year ? `Year ${searchApiData.year}` : "Year IV",
-          phone: profileApiData?.phone || "9715020320",
-          mentor_name: searchApiData?.mentor_name || "Dr. ANANDAKUMAR K ISE",
-          picture: photoUrl,
-          photo_url: photoUrl,
-          avatarBg: "from-[#38c4ee] to-[#0ea5e9]",
-          badge: "Verified BIT Student",
-          email: email,
-          currentPoints: balancePts,
-          cumulativePoints: cumulativePts,
-          redeemedPoints: redeemedPts,
-          history: [
-            { id: 1, title: "Cumulative RP Earned", date: "Academic Year 2024-2025", points: `+${cumulativePts} RP`, category: "Activities", icon: Trophy, color: "text-amber-500 bg-amber-50" },
-            { id: 2, title: "Redeemed Points", date: "Benefits & Vouchers", points: `-${redeemedPts} RP`, category: "Redemption", icon: Gift, color: "text-indigo-500 bg-indigo-50" },
-            { id: 3, title: "Net Active Balance", date: "Current Academic Standing", points: `${balancePts} RP`, category: "Balance", icon: Award, color: "text-emerald-500 bg-emerald-50" },
-          ],
-          breakdown: [
-            { label: "Active Net Balance", pts: numBal, percent: Math.min(100, Math.round((numBal / (numCum || 1)) * 100)) || 100, color: "bg-[#4f46e5]" },
-            { label: "Cumulative Points", pts: numCum, percent: 100, color: "bg-[#22d3ee]" },
-            { label: "Redeemed Points", pts: numRed, percent: Math.min(100, Math.round((numRed / (numCum || 1)) * 100)), color: "bg-amber-500" },
-          ]
-        });
-
+        await processStudentLogin(email, googleName);
       } catch (err) {
         console.error('Error in Google profile handling:', err);
-        setAuthError(err.message || 'Failed to complete sign in. Please try again.');
+        setAuthError(err.message || 'Failed to complete sign in.');
       } finally {
         setGoogleLoading(false);
       }
@@ -735,18 +738,46 @@ function LoginPage({ onLogin, isDarkMode, initialNotice = '' }) {
       console.warn('Google Login returned error:', errorResponse);
       setGoogleLoading(false);
       const detail = errorResponse?.error_description || errorResponse?.error || '';
-      setAuthError(detail ? `Google sign in error: ${detail}` : 'Google sign in was cancelled or requires http://localhost:5173 in Authorized JavaScript origins.');
+      setAuthError(detail ? `Google sign in error: ${detail}` : 'Google sign-in was closed or blocked. You can sign in directly with your Roll Number below.');
     }
   });
 
   const handleLoginClick = () => {
     setAuthError('');
     setGoogleLoading(true);
+    
+    // Safety timeout: reset if Google popup hangs
+    const safetyTimer = setTimeout(() => {
+      setGoogleLoading(false);
+    }, 12000);
+
     try {
       triggerGoogleLogin();
     } catch (err) {
+      clearTimeout(safetyTimer);
       console.error(err);
       setGoogleLoading(false);
+      setAuthError('Google sign in is not supported in this environment. Please use direct Roll Number sign-in below.');
+    }
+  };
+
+  const handleDirectSignIn = async (e) => {
+    if (e) e.preventDefault();
+    const query = directRollInput.trim().toUpperCase();
+    if (!query) {
+      setAuthError('Please enter your Roll Number (e.g. 7376232CT109) or college email.');
+      return;
+    }
+    setDirectLoading(true);
+    setAuthError('');
+    try {
+      const emailQuery = query.includes('@') ? query : `${query.toLowerCase()}@bitsathy.ac.in`;
+      await processStudentLogin(emailQuery, query);
+    } catch (err) {
+      console.error('Direct sign in error:', err);
+      setAuthError(`Could not find student records for "${query}". Please check your Roll Number.`);
+    } finally {
+      setDirectLoading(false);
     }
   };
 
@@ -791,7 +822,7 @@ function LoginPage({ onLogin, isDarkMode, initialNotice = '' }) {
         }`}>
           
           {/* Logo & Header Title */}
-          <div className="flex flex-col items-center text-center mb-6">
+          <div className="flex flex-col items-center text-center mb-5">
             <div className="relative mb-3 p-2 rounded-2xl bg-white shadow-md border border-slate-200">
               <img 
                 src="/bit-logo.png" 
@@ -810,10 +841,6 @@ function LoginPage({ onLogin, isDarkMode, initialNotice = '' }) {
               <Sparkles className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
               <span>Student RP Portal</span>
             </div>
-            
-            <p className={`text-xs mt-3 leading-relaxed max-w-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-              Sign in with your official BIT Google account to access your reward points, activities, and achievements.
-            </p>
           </div>
 
           {authError && (
@@ -842,10 +869,52 @@ function LoginPage({ onLogin, isDarkMode, initialNotice = '' }) {
             <span className="text-sm font-semibold">{googleLoading ? 'Connecting to Google...' : 'Continue with Google'}</span>
           </button>
 
+          {/* OR DIVIDER */}
+          <div className="flex items-center my-4">
+            <div className={`flex-1 border-t ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`} />
+            <span className={`px-3 text-[10px] font-black uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+              or sign in with roll number
+            </span>
+            <div className={`flex-1 border-t ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`} />
+          </div>
+
+          {/* DIRECT ROLL NUMBER SIGN IN FORM */}
+          <form onSubmit={handleDirectSignIn} className="space-y-3">
+            <div>
+              <div className="relative">
+                <IdCard className={`w-4 h-4 absolute left-3.5 top-3.5 pointer-events-none ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`} />
+                <input
+                  type="text"
+                  value={directRollInput}
+                  onChange={(e) => setDirectRollInput(e.target.value)}
+                  placeholder="Enter Roll No (e.g. 7376232CT109)"
+                  className={`w-full pl-10 pr-4 py-2.5 rounded-2xl text-xs sm:text-sm font-medium border outline-none transition-all uppercase ${
+                    isDarkMode 
+                      ? 'bg-slate-800/80 border-slate-700 text-white placeholder-slate-500 focus:border-indigo-500' 
+                      : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500 shadow-xs'
+                  }`}
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={directLoading}
+              className="w-full py-2.5 px-4 rounded-2xl font-bold text-xs sm:text-sm bg-indigo-600 hover:bg-indigo-700 text-white transition-all cursor-pointer shadow-md shadow-indigo-600/30 flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              {directLoading ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <LogIn className="w-4 h-4" />
+              )}
+              <span>{directLoading ? 'Verifying Student Records...' : 'Sign In with Roll Number'}</span>
+            </button>
+          </form>
+
           {/* Security / Help hint */}
-          <div className={`mt-5 pt-4 border-t text-center ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-            <p className={`text-[11px] font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-              Use your <span className={`font-semibold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>@bitsathy.ac.in</span> institutional email
+          <div className={`mt-4 pt-3 border-t text-center ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+            <p className={`text-[10px] font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+              Authorized for all active students of <span className={`font-semibold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>BIT Sathy</span>
             </p>
           </div>
 
