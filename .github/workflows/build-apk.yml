@@ -37,15 +37,18 @@ jobs:
       - name: Make Gradle Wrapper Executable
         run: chmod +x android/gradlew
 
-      - name: Extract & Display SHA-1 & SHA-256 Certificate Fingerprints
-        run: |
-          cd android
-          ./gradlew signingReport --no-daemon
-
       - name: Build Android Debug APK
         run: |
           cd android
           ./gradlew assembleDebug --no-daemon
+
+      - name: Extract & Display SHA-1 & SHA-256 Certificate Fingerprints
+        run: |
+          echo "=========================================================="
+          echo "         ANDROID APK SIGNING CERTIFICATE FINGERPRINTS     "
+          echo "=========================================================="
+          keytool -printcert -jarfile android/app/build/outputs/apk/debug/app-debug.apk
+          echo "=========================================================="
 
       - name: Upload APK as Workflow Artifact
         uses: actions/upload-artifact@v4
