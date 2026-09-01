@@ -9,5 +9,15 @@
 	},
 	"android": {
 		"allowMixedContent": true
+	},
+	"plugins": {
+		"GoogleAuth": {
+			"scopes": [
+				"profile",
+				"email"
+			],
+			"serverClientId": "97840517761-anoolsallpime9vpmnrg7uo9stu2qqol.apps.googleusercontent.com",
+			"forceCodeForRefreshToken": false
+		}
 	}
 }
