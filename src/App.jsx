@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import placementData from './data/placementData.json';
 import InternalMarksView from './components/InternalMarksView';
@@ -258,46 +258,73 @@ function AvatarImage({ src, alt = "Avatar", initials = "ST", className = "w-full
 import { useGoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from 'jwt-decode';
 
+// Native-compatible Response wrapper for CapacitorHttp
+class NativeHttpResponse {
+  constructor(nativeRes) {
+    this.status = nativeRes.status || 200;
+    this.ok = (this.status >= 200 && this.status < 300);
+    this._data = nativeRes.data;
+  }
+  async json() {
+    if (typeof this._data === 'string') {
+      try {
+        return JSON.parse(this._data);
+      } catch {
+        return this._data;
+      }
+    }
+    return this._data;
+  }
+  async text() {
+    if (typeof this._data === 'string') {
+      return this._data;
+    }
+    return JSON.stringify(this._data);
+  }
+}
+
 // Unified Bitcentral API fetcher with resilient direct live connection for Mobile & Web
 async function bitcentralFetch(pathAndQuery) {
   const cleanPath = pathAndQuery.startsWith('/') ? pathAndQuery : `/${pathAndQuery}`;
   const token = typeof window !== 'undefined' ? localStorage.getItem('bit_rp_access_token') : null;
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-  };
+  const fullUrl = `https://bitcentral-v2.onrender.com${cleanPath}`;
 
-  const isNativeOrLocal = typeof window !== 'undefined' && (
-    Capacitor.isNativePlatform() ||
-    window.location.protocol === 'capacitor:' ||
-    window.location.protocol === 'ionic:' ||
-    window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1'
-  );
-
-  // 1. In native Android APK or local development, query live bitcentral-v2 directly
-  if (isNativeOrLocal) {
+  // 1. On Android / iOS Native APK, use CapacitorHttp (bypasses Cloudflare 403 Forbidden Origin: https://localhost blocks)
+  if (Capacitor.isNativePlatform()) {
     try {
-      const liveRes = await fetch(`https://bitcentral-v2.onrender.com${cleanPath}`, { headers });
-      if (liveRes.ok || liveRes.status === 400 || liveRes.status === 404) {
-        return liveRes;
-      }
+      const nativeRes = await CapacitorHttp.get({
+        url: fullUrl,
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+      return new NativeHttpResponse(nativeRes);
     } catch (e) {
-      console.warn('Native bitcentralFetch live attempt error:', e);
+      console.warn('CapacitorHttp failed, falling back to standard fetch:', e);
     }
   }
 
   // 2. Try web proxy gateway (for deployed web version)
   try {
-    const res = await fetch(`/api/bitcentral${cleanPath}`, { headers });
+    const res = await fetch(`/api/bitcentral${cleanPath}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      }
+    });
     if (res.ok) {
       return res;
     }
   } catch (e) {}
 
   // 3. Resilient fallback to live backend
-  return fetch(`https://bitcentral-v2.onrender.com${cleanPath}`, {
-    headers
+  return fetch(fullUrl, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    }
   });
 }
 
