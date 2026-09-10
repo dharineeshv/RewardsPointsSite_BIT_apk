@@ -55,6 +55,10 @@ export default function ActivityAttendanceView({ currentUser, isDarkMode }) {
     { id: 7, slot: 'Afternoon', timing: '03:25 pm to 04:25 pm', sessionName: 'Period 7', markedBy: '—', status: 'Absent' },
   ], []);
 
+  const [isLiveConnected, setIsLiveConnected] = useState(false);
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [syncTokenInput, setSyncTokenInput] = useState('');
+
   // Fetch / Sync Live Attendance from BitCentral & PS Portal
   const fetchAttendance = async (dateStr = selectedDate) => {
     setLoading(true);
@@ -91,7 +95,6 @@ export default function ActivityAttendanceView({ currentUser, isDarkMode }) {
           let mappedPeriods = DEFAULT_PERIODS;
           
           if (Array.isArray(rawPeriods) && rawPeriods.length > 0) {
-            // Filter or match for current date if date string present
             const matchingRows = rawPeriods.filter(r => r.date === dateStr || !r.date);
             const sourceList = matchingRows.length > 0 ? matchingRows : rawPeriods;
             mappedPeriods = DEFAULT_PERIODS.map((def, idx) => {
@@ -115,6 +118,7 @@ export default function ActivityAttendanceView({ currentUser, isDarkMode }) {
             daysAbsent: summary.absent_days || summary.days_absent || summary.daysAbsent || 0,
             periods: mappedPeriods
           });
+          setIsLiveConnected(true);
           setLoading(false);
           return;
         }
@@ -184,6 +188,7 @@ export default function ActivityAttendanceView({ currentUser, isDarkMode }) {
             daysAbsent: summaryData.absent_days || summaryData.daysAbsent || 0,
             periods: mappedPeriods
           });
+          setIsLiveConnected(true);
           setLoading(false);
           return;
         }
@@ -191,6 +196,8 @@ export default function ActivityAttendanceView({ currentUser, isDarkMode }) {
         console.warn('PS Attendance live query:', err);
       }
     }
+
+    setIsLiveConnected(false);
 
     // Default calculation based on current semester records
     setTimeout(() => {

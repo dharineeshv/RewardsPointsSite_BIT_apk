@@ -1242,8 +1242,7 @@ function LoginPage({ onLogin, isDarkMode, initialNotice = '' }) {
     if (Capacitor.isNativePlatform()) {
       try {
         GoogleAuth.initialize({
-          clientId: '97840517761-anoolsallpime9vpmnrg7uo9stu2qqol.apps.googleusercontent.com',
-          serverClientId: '425189906555-ke5qlv5m8odqh8jhdqcqa9ek11tr8l31.apps.googleusercontent.com',
+          clientId: '425189906555-ke5qlv5m8odqh8jhdqcqa9ek11tr8l31.apps.googleusercontent.com',
           scopes: ['profile', 'email'],
           grantOfflineAccess: true,
         });
