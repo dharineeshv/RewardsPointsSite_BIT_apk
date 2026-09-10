@@ -311,8 +311,100 @@ export default function ActivityAttendanceView({ currentUser, isDarkMode }) {
           >
             <RefreshCw className={`w-4 h-4 text-indigo-500 ${loading ? 'animate-spin' : ''}`} />
           </button>
+
+          <button
+            type="button"
+            onClick={() => setShowSyncModal(true)}
+            className={`px-3 py-2 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition-all cursor-pointer ${
+              isLiveConnected 
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20' 
+                : 'bg-indigo-600 border-indigo-500 text-white hover:bg-indigo-500 shadow-md shadow-indigo-500/20'
+            }`}
+            title="Live Attendance Sync"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{isLiveConnected ? 'Live Synced' : 'Sync Live'}</span>
+          </button>
         </div>
       </div>
+
+      {/* SYNC MODAL */}
+      {showSyncModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
+          <div className={`w-full max-w-md rounded-3xl p-6 border shadow-2xl space-y-4 ${
+            isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold">Live Attendance Sync</h3>
+                  <p className="text-xs text-slate-400">Roll: {currentUser?.id || 'Student'}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowSyncModal(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className={`p-3.5 rounded-2xl text-xs border ${
+              isLiveConnected ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-slate-800/50 border-slate-700/50 text-slate-300'
+            }`}>
+              <div className="flex items-center gap-2 font-bold">
+                <span className={`w-2 h-2 rounded-full ${isLiveConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+                Status: {isLiveConnected ? 'Connected to BIT Central Live Database' : 'Using Offline Semester Records'}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-slate-400">
+                Quick Token Sync (Paste your BIT Central or PS token):
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Paste JWT / Token..."
+                  value={syncTokenInput}
+                  onChange={(e) => setSyncTokenInput(e.target.value)}
+                  className={`flex-1 px-3 py-2 rounded-xl text-xs border outline-none ${
+                    isDarkMode ? 'bg-slate-800 border-slate-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 focus:border-indigo-500'
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (syncTokenInput.trim()) {
+                      localStorage.setItem('bitcentral_jwt', syncTokenInput.trim());
+                      localStorage.setItem('bit_ps_token', syncTokenInput.trim());
+                      setShowSyncModal(false);
+                      fetchAttendance(selectedDate);
+                    }
+                  }}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl cursor-pointer"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowSyncModal(false);
+                fetchAttendance(selectedDate);
+              }}
+              className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl cursor-pointer transition-colors"
+            >
+              🔄 Refresh Attendance Now
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 2. FOUR SUMMARY METRIC CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
