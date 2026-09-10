@@ -1258,10 +1258,29 @@ function LoginPage({ onLogin, isDarkMode, initialNotice = '' }) {
           return;
         }
 
-        // Method 1: Background PS GLogin Auto-Sync
+        // Background Authentication Sync to BitCentral and PS Portal
         const idToken = googleUser?.authentication?.idToken || googleUser?.idToken;
         if (idToken) {
           try {
+            // 1. BitCentral Auth (powers /ps/student-report/details & /ps/biometrics)
+            const bcRes = await CapacitorHttp.post({
+              url: 'https://bitcentral-v2.onrender.com/auth/google',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json, text/plain, */*'
+              },
+              data: { credential: idToken }
+            });
+            const bcData = typeof bcRes.data === 'string' ? JSON.parse(bcRes.data) : bcRes.data;
+            if (bcData?.token || bcData?.jwt) {
+              localStorage.setItem('bitcentral_jwt', bcData.token || bcData.jwt);
+            }
+          } catch (bcErr) {
+            console.warn('BitCentral background auth error:', bcErr);
+          }
+
+          try {
+            // 2. Direct PS Portal Auth
             const psRes = await CapacitorHttp.post({
               url: 'https://ps.bitsathy.ac.in/api/ps_v2/auth/GLogin',
               headers: { 

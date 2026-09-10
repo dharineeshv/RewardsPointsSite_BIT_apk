@@ -55,11 +55,75 @@ export default function ActivityAttendanceView({ currentUser, isDarkMode }) {
     { id: 7, slot: 'Afternoon', timing: '03:25 pm to 04:25 pm', sessionName: 'Period 7', markedBy: '—', status: 'Absent' },
   ], []);
 
-  // Fetch / Sync Live Attendance from PS Portal if available, else derive accurate state
+  // Fetch / Sync Live Attendance from BitCentral & PS Portal
   const fetchAttendance = async (dateStr = selectedDate) => {
     setLoading(true);
     const token = typeof window !== 'undefined' ? localStorage.getItem('bit_ps_token') : null;
+    const bcJwt = typeof window !== 'undefined' ? localStorage.getItem('bitcentral_jwt') : null;
+    const studentRoll = currentUser?.id || currentUser?.roll_no || '';
 
+    // 1. Try BitCentral Student Report & Biometrics API
+    if (studentRoll) {
+      try {
+        const bcHeaders = {
+          'Accept': 'application/json, text/plain, */*',
+          'Content-Type': 'application/json',
+          ...(bcJwt ? { 'Authorization': `Bearer ${bcJwt}` } : {})
+        };
+
+        const reportUrl = `https://bitcentral-v2.onrender.com/ps/student-report/details?id=${encodeURIComponent(studentRoll)}`;
+        let reportData = null;
+
+        if (Capacitor.isNativePlatform()) {
+          const nRes = await CapacitorHttp.get({ url: reportUrl, headers: bcHeaders });
+          reportData = typeof nRes.data === 'string' ? JSON.parse(nRes.data) : nRes.data;
+        } else {
+          const fRes = await fetch(reportUrl, { headers: bcHeaders });
+          if (fRes.ok) reportData = await fRes.json();
+        }
+
+        if (reportData && (reportData.attendance || reportData.attendance_percentage || reportData.summary || reportData.biometric)) {
+          const summary = reportData.summary || reportData.attendance || {};
+          const livePct = reportData.attendance_percentage || summary.attendance_percentage || summary.percentage;
+          const pctStr = livePct ? (String(livePct).includes('%') ? String(livePct) : `${parseFloat(livePct).toFixed(2)}%`) : '100.00%';
+          
+          const rawPeriods = reportData.attendance?.rows || reportData.attendance || reportData.biometric || [];
+          let mappedPeriods = DEFAULT_PERIODS;
+          
+          if (Array.isArray(rawPeriods) && rawPeriods.length > 0) {
+            // Filter or match for current date if date string present
+            const matchingRows = rawPeriods.filter(r => r.date === dateStr || !r.date);
+            const sourceList = matchingRows.length > 0 ? matchingRows : rawPeriods;
+            mappedPeriods = DEFAULT_PERIODS.map((def, idx) => {
+              const row = sourceList[idx] || {};
+              const isPresent = row.status === 'Present' || row.status === 'P' || row.is_present === true || Boolean(row.device_name || row.punch_time);
+              return {
+                id: def.id,
+                slot: def.slot,
+                timing: def.timing,
+                sessionName: row.session_name || row.course_name || row.subject || def.sessionName,
+                markedBy: row.staff_name || row.faculty || row.device_name || '—',
+                status: isPresent ? 'Present' : (row.status || 'Absent')
+              };
+            });
+          }
+
+          setAttendanceData({
+            overallPercentage: pctStr,
+            workingDays: summary.working_days || summary.total_days || summary.workingDays || 73,
+            daysPresent: summary.present_days || summary.days_present || summary.daysPresent || 73,
+            daysAbsent: summary.absent_days || summary.days_absent || summary.daysAbsent || 0,
+            periods: mappedPeriods
+          });
+          setLoading(false);
+          return;
+        }
+      } catch (bcErr) {
+        console.warn('BitCentral Report query fallback:', bcErr);
+      }
+    }
+
+    // 2. Direct PS Portal API Query
     if (token) {
       try {
         const headers = {
@@ -98,7 +162,6 @@ export default function ActivityAttendanceView({ currentUser, isDarkMode }) {
           const dayData = dayRes.data || dayRes;
           const summaryData = summaryRes?.data || summaryRes || {};
 
-          // Format periods array
           let mappedPeriods = DEFAULT_PERIODS;
           if (Array.isArray(dayData) && dayData.length > 0) {
             mappedPeriods = DEFAULT_PERIODS.map((def, idx) => {
