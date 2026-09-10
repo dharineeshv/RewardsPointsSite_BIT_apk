@@ -3,6 +3,7 @@ import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import placementData from './data/placementData.json';
 import InternalMarksView from './components/InternalMarksView';
+import ActivityAttendanceView from './components/ActivityAttendanceView';
 import { STUDENTS_INTERNAL_MARKS_LIST } from './data/rp_distribution';
 import {
   FileSpreadsheet,
@@ -7028,87 +7029,12 @@ export default function App() {
             </div>
           )}
 
-          {/* VIEW 3.75: PS PORTAL ACTIVITY & PERIOD ATTENDANCE */}
+          {/* VIEW 3.75: PS PORTAL ACTIVITY & PERIOD ATTENDANCE (7 PERIODS MASTER UI) */}
           {activeNav === 'Activity Attendance' && (
-            <div className="max-w-6xl mx-auto w-full space-y-4 animate-fadeIn">
-              {/* Responsive Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 border border-indigo-500/20 text-[10px] font-bold uppercase tracking-wider">
-                      PS Portal • Live Attendance
-                    </span>
-                  </div>
-                  <h1 className={`text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight mt-1 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                    Activity & Period Attendance
-                  </h1>
-                  <p className={`text-xs sm:text-sm mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Real-time personal attendance tracking, special lab slots, and session-wise attendance from <strong>ps.bitsathy.ac.in</strong>.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => setPsIframeKey(prev => prev + 1)}
-                    className={`text-xs font-semibold px-3.5 py-2.5 rounded-xl border flex items-center gap-2 transition-all cursor-pointer ${
-                      isDarkMode 
-                        ? 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white' 
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs'
-                    }`}
-                    title="Reload attendance view"
-                  >
-                    <RefreshCw className="w-4 h-4 text-indigo-500" />
-                    <span>Reload</span>
-                  </button>
-
-                  <a
-                    href="https://ps.bitsathy.ac.in/activity/myAttendance"
-                    target="_blank"
-                    rel="noreferrer"
-                    className={`text-xs font-semibold px-4 py-2.5 rounded-xl border flex items-center gap-2 transition-all cursor-pointer ${
-                      isDarkMode 
-                        ? 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white' 
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs'
-                    }`}
-                  >
-                    <ExternalLink className="w-4 h-4 text-indigo-500" />
-                    <span>Open in Browser</span>
-                  </a>
-                </div>
-              </div>
-
-              {/* 1-Time Session Tip Banner */}
-              <div className={`p-3.5 sm:p-4 rounded-2xl border flex items-start sm:items-center gap-3 transition-all ${
-                isDarkMode ? 'bg-indigo-950/30 border-indigo-800/50 text-indigo-200' : 'bg-indigo-50/80 border-indigo-200 text-indigo-900'
-              }`}>
-                <div className="p-2 rounded-xl bg-indigo-500/15 text-indigo-500 shrink-0">
-                  <CalendarCheck className="w-5 h-5" />
-                </div>
-                <div className="text-xs sm:text-sm">
-                  <div className="font-bold">Google SSO Session Sync</div>
-                  <div className={`text-[11px] sm:text-xs mt-0.5 ${isDarkMode ? 'text-indigo-300/80' : 'text-indigo-700/80'}`}>
-                    Sign in with your <strong>@bitsathy.ac.in</strong> account on your first visit. The session is saved permanently in your app for instant automatic viewing.
-                  </div>
-                </div>
-              </div>
-
-              {/* Embedded Interactive PS Portal Attendance Frame */}
-              <div className={`rounded-2xl sm:rounded-3xl border overflow-hidden shadow-xl transition-all relative ${
-                isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white border-slate-200 shadow-md'
-              }`}>
-                <div className="relative w-full h-[76vh] sm:h-[800px] min-h-[550px] bg-slate-950">
-                  <iframe
-                    key={psIframeKey}
-                    src="https://ps.bitsathy.ac.in/activity/myAttendance"
-                    title="PS Portal Activity Attendance"
-                    className="w-full h-full border-0 bg-white"
-                    allow="camera; microphone; geolocation; fullscreen; clipboard-read; clipboard-write"
-                    loading="lazy"
-                  />
-                </div>
-              </div>
-            </div>
+            <ActivityAttendanceView 
+              currentUser={displayedStudent || currentUser}
+              isDarkMode={isDarkMode}
+            />
           )}
 
           {/* VIEW 3.8: BIT MAP & CAMPUS VENUE LOCATOR */}
