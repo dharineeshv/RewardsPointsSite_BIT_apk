@@ -1257,6 +1257,29 @@ function LoginPage({ onLogin, isDarkMode, initialNotice = '' }) {
           return;
         }
 
+        // Method 1: Background PS GLogin Auto-Sync
+        const idToken = googleUser?.authentication?.idToken || googleUser?.idToken;
+        if (idToken) {
+          try {
+            const psRes = await CapacitorHttp.post({
+              url: 'https://ps.bitsathy.ac.in/api/ps_v2/auth/GLogin',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json, text/plain, */*'
+              },
+              data: { id_token: idToken }
+            });
+            const parsedData = typeof psRes.data === 'string' ? JSON.parse(psRes.data) : psRes.data;
+            if (parsedData?.success && (parsedData?.data?.token || parsedData?.data?.jwt)) {
+              const psToken = parsedData.data.token || parsedData.data.jwt;
+              localStorage.setItem('bit_ps_token', psToken);
+              localStorage.setItem('bit_ps_user', JSON.stringify(parsedData.data));
+            }
+          } catch (psErr) {
+            console.warn('Background PS auto-login error:', psErr);
+          }
+        }
+
         await processStudentLogin(email, googleName, picture);
       } catch (err) {
         console.error('Native Google Auth Error:', err);
