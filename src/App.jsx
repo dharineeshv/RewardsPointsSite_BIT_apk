@@ -1243,8 +1243,9 @@ function LoginPage({ onLogin, isDarkMode, initialNotice = '' }) {
       try {
         GoogleAuth.initialize({
           clientId: '97840517761-anoolsallpime9vpmnrg7uo9stu2qqol.apps.googleusercontent.com',
+          serverClientId: '810454589520-vtufbo381lti5sjijsm2cf3sbh3dhcpv.apps.googleusercontent.com',
           scopes: ['profile', 'email'],
-          grantOfflineAccess: false,
+          grantOfflineAccess: true,
         });
         const googleUser = await GoogleAuth.signIn();
         const email = (googleUser.email || '').toLowerCase().trim();
