@@ -258,7 +258,7 @@ function AvatarImage({ src, alt = "Avatar", initials = "ST", className = "w-full
 import { useGoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from 'jwt-decode';
 
-// Unified Bitcentral API proxy fetcher with resilient direct fallback
+// Unified Bitcentral API fetcher with resilient direct live connection for Mobile & Web
 async function bitcentralFetch(pathAndQuery) {
   const cleanPath = pathAndQuery.startsWith('/') ? pathAndQuery : `/${pathAndQuery}`;
   const token = typeof window !== 'undefined' ? localStorage.getItem('bit_rp_access_token') : null;
@@ -267,7 +267,27 @@ async function bitcentralFetch(pathAndQuery) {
     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
   };
 
-  // 1. Try local proxy / Vercel serverless gateway
+  const isNativeOrLocal = typeof window !== 'undefined' && (
+    Capacitor.isNativePlatform() ||
+    window.location.protocol === 'capacitor:' ||
+    window.location.protocol === 'ionic:' ||
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1'
+  );
+
+  // 1. In native Android APK or local development, query live bitcentral-v2 directly
+  if (isNativeOrLocal) {
+    try {
+      const liveRes = await fetch(`https://bitcentral-v2.onrender.com${cleanPath}`, { headers });
+      if (liveRes.ok || liveRes.status === 400 || liveRes.status === 404) {
+        return liveRes;
+      }
+    } catch (e) {
+      console.warn('Native bitcentralFetch live attempt error:', e);
+    }
+  }
+
+  // 2. Try web proxy gateway (for deployed web version)
   try {
     const res = await fetch(`/api/bitcentral${cleanPath}`, { headers });
     if (res.ok) {
@@ -275,9 +295,9 @@ async function bitcentralFetch(pathAndQuery) {
     }
   } catch (e) {}
 
-  // 2. Direct fallback to live bitcentral-v2 backend
+  // 3. Resilient fallback to live backend
   return fetch(`https://bitcentral-v2.onrender.com${cleanPath}`, {
-    headers: { 'Content-Type': 'application/json' }
+    headers
   });
 }
 
@@ -3752,7 +3772,7 @@ export default function App() {
     }`}>
       
       {/* 1. TOP HEADER & NAVBAR */}
-      <header className={`sticky top-0 z-30 w-full border-b backdrop-blur-md transition-colors duration-200 ${
+      <header className={`sticky top-0 z-30 w-full border-b backdrop-blur-md transition-colors duration-200 safe-top-padding ${
         isDarkMode ? 'border-slate-800 bg-slate-950/90 text-slate-100' : 'border-slate-200 bg-white/90 text-slate-900 shadow-xs'
       }`}>
         <div className="max-w-[1600px] mx-auto px-3.5 sm:px-6 md:px-8 py-2.5 sm:py-3.5 flex items-center justify-between gap-3 sm:gap-4">
@@ -4319,7 +4339,7 @@ export default function App() {
         />
       )}
 
-      <aside className={`fixed top-0 left-0 bottom-0 z-50 w-72 sm:w-80 max-w-[85vw] flex flex-col py-5 px-4 shadow-2xl transition-transform duration-300 ease-in-out ${
+      <aside className={`fixed top-0 left-0 bottom-0 z-50 w-72 sm:w-80 max-w-[85vw] flex flex-col py-5 px-4 shadow-2xl transition-transform duration-300 ease-in-out safe-top-padding ${
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full pointer-events-none'
       } ${
         isDarkMode ? 'bg-slate-900 border-r border-slate-800 text-slate-100' : 'bg-white border-r border-slate-200 text-slate-900'

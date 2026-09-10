@@ -1,11 +1,28 @@
 @import "tailwindcss";
 
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+}
+
 body {
   font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
   margin: 0;
   padding: 0;
   background-color: #020617;
   color: #f8fafc;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-top-padding {
+  padding-top: max(env(safe-area-inset-top, 0px), 14px);
+}
+
+@media (max-width: 640px) {
+  .safe-top-padding {
+    padding-top: max(env(safe-area-inset-top, 0px), 28px);
+  }
 }
 
 #root {
