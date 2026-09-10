@@ -1243,7 +1243,7 @@ function LoginPage({ onLogin, isDarkMode, initialNotice = '' }) {
       try {
         GoogleAuth.initialize({
           clientId: '97840517761-anoolsallpime9vpmnrg7uo9stu2qqol.apps.googleusercontent.com',
-          serverClientId: '810454589520-vtufbo381lti5sjijsm2cf3sbh3dhcpv.apps.googleusercontent.com',
+          serverClientId: '425189906555-ke5qlv5m8odqh8jhdqcqa9ek11tr8l31.apps.googleusercontent.com',
           scopes: ['profile', 'email'],
           grantOfflineAccess: true,
         });
