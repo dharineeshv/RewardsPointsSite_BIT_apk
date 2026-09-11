@@ -4,6 +4,7 @@ import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import placementData from './data/placementData.json';
 import InternalMarksView from './components/InternalMarksView';
 import ActivityAttendanceView from './components/ActivityAttendanceView';
+import SilentSSOBridge from './components/SilentSSOBridge';
 import { STUDENTS_INTERNAL_MARKS_LIST } from './data/rp_distribution';
 import {
   FileSpreadsheet,
@@ -8545,6 +8546,12 @@ export default function App() {
         leavesList={leavesList}
         placementData={BIT_DAILY_PLACEMENT_DATA}
         setActiveNav={setActiveNav}
+        isDarkMode={isDarkMode}
+      />
+
+      {/* Invisible Background SSO Bridge for PS Portal & Attendance */}
+      <SilentSSOBridge 
+        currentUser={currentUser}
         isDarkMode={isDarkMode}
       />
 

@@ -214,6 +214,13 @@ export default function ActivityAttendanceView({ currentUser, isDarkMode }) {
 
   useEffect(() => {
     fetchAttendance(selectedDate);
+
+    const handleAuthUpdate = () => {
+      fetchAttendance(selectedDate);
+    };
+
+    window.addEventListener('ps-auth-updated', handleAuthUpdate);
+    return () => window.removeEventListener('ps-auth-updated', handleAuthUpdate);
   }, [selectedDate]);
 
   // Aggregate Metrics
